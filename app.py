@@ -17,60 +17,70 @@ except ImportError:
     HAS_XGBOOST = False
 
 # =====================================================
-# CẤU HÌNH TRANG & STYLE CSS NỀN TỐI
+# CẤU HÌNH GIAO DIỆN PREMIUM DARK MODE (GIỐNG ẢNH MẪU)
 # =====================================================
 st.set_page_config(
     page_title="LaLiga xG Predictor & Analytics",
     page_icon="⚽",
     layout="wide"
 )
+
 st.markdown("""
 <style>
-/* 1. Chỉ đổi màu nền cho khung lớn ứng dụng, tuyệt đối không ép nền lên biểu đồ và bảng */
+/* Đổi phông nền tổng thể sang màu xanh đen sâu */
 .stApp { 
-    background-color: #0f172a !important; 
+    background-color: #0b0f19 !important; 
 } 
 
-/* 2. Chỉ ép chữ màu trắng sáng cho các thẻ văn bản thông thường và nhãn nút bấm */
+/* Ép màu chữ văn bản thông thường sang màu xám bạc dễ đọc */
 .stApp p, .stApp span, .stApp label, .stApp li {
-    color: #f8fafc !important;
+    color: #94a3b8 !important;
 }
 
-/* 3. Cấu hình riêng cho thanh Sidebar bên trái */
+/* Định dạng cấu trúc Thanh Sidebar bên trái */
 [data-testid="stSidebar"] { 
-    background-color: #1e293b !important; 
-}
-[data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
-    color: #f8fafc !important;
+    background-color: #0f172a !important; 
+    border-right: 1px solid #1e293b !important;
 }
 
-/* 4. Định dạng các ô KPI số Metric */
-[data-testid="stMetric"] {
-    background-color: #1e293b !important;
-    border: 1px solid #334155 !important;
-    padding: 15px;
-    border-radius: 10px;
-}
-/* Giữ chữ trong Metric sáng rõ */
-[data-testid="stMetric"] * {
-    color: #f8fafc !important;
+/* Định dạng các ô Thẻ hiển thị (Card Layout bo góc giống ảnh mẫu) */
+[data-testid="stMetric"], .stMetric {
+    background-color: #111827 !important;
+    border: 1px solid #1f2937 !important;
+    padding: 20px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* 5. Bắt buộc các thẻ tiêu đề h1, h2, h3 giữ màu xanh neon công nghệ */
+/* Ép các con số lớn trong Metric hiển thị màu vàng amber hoặc xanh sáng rõ nét */
+[data-testid="stMetricValue"] {
+    color: #38bdf8 !important;
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+}
+
+/* Bắt buộc các thẻ tiêu đề giữ màu xanh Cyan sáng nổi bật */
 h1, h2, h3, h1 *, h2 * , h3 * { 
     color: #38bdf8 !important; 
+    font-family: 'Inter', sans-serif !important;
 } 
 
-/* 6. Định dạng thanh chọn Tabs */
+/* Định dạng các thanh Tabs chọn trang */
 .stTabs [data-baseweb="tab"] { 
-    color: #94a3b8 !important; 
+    color: #64748b !important; 
 } 
 .stTabs [data-baseweb="tab"][aria-selected="true"] { 
     color: #38bdf8 !important; 
     font-weight: bold !important; 
+    border-bottom-color: #38bdf8 !important;
 }
 
-/* 7. Đảm bảo hộp nhập liệu/hộp chọn selectbox không bị lỗi màu */
+/* Làm đẹp Hộp lựa chọn Selectbox giống giao diện ảnh mẫu */
+.stSelectbox div[data-baseweb="select"] {
+    background-color: #1f2937 !important;
+    border: 1px solid #374151 !important;
+    border-radius: 8px !important;
+}
 .stSelectbox div[data-baseweb="select"] * {
     color: #f8fafc !important;
 }
@@ -82,10 +92,11 @@ DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
 # =====================================================
 # TIỀN XỬ LÝ DỮ LIỆU & TẠO ĐẶC TRƯNG (FEATURE ENGINEERING)
 # =====================================================
-@st.cache_data(ttl=600)  
+@st.cache_data
 def load_and_process_data(file_path):
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip().str.lower()
+    
     df["team"] = df["team"].astype(str).str.strip()
     df["opponent"] = df["opponent"].astype(str).str.strip()
     df["venue"] = df["venue"].astype(str).str.strip().str.lower().replace({
@@ -238,35 +249,37 @@ try:
         st.error(f"Không tìm thấy file dữ liệu '{DATA_FILE.name}'. Vui lòng tải file 'matches_laliga_clean.csv' lên thư mục.")
         st.stop()
         
-    # ĐÃ SỬA LỖI CĂN LỀ: Toàn bộ các dòng logic bên dưới đã được thụt lề (thêm Tab) hợp lệ vào trong khối with
     with st.spinner("⚽ Hệ thống đang huấn luyện AI và tính toán phong độ... Vui lòng đợi trong giây lát!"):
         df, feature_cols = load_and_process_data(DATA_FILE)
         best_model, best_model_name, model_metrics, X_test, y_test, test_preds = train_ml_models(df, feature_cols)
         teams = sorted(df["team"].unique().tolist())
     # ------------------ TRANG 1: TỔNG QUAN ------------------
     if page == "🏠 Tổng quan hệ thống":
-        st.title("🏆 HỆ THỐNG PHÂN TÍCH & DỰ ĐOÁN BÓNG ĐÁ LALIGA")
-        st.markdown(f"Hệ thống ứng dụng Học máy phân tích chỉ số Expected Goals. Thuật toán tối ưu hiện tại: **{best_model_name}**.")
+        st.title("🏆 HỆ THỐNG PHÂN TÍCH BÓNG ĐÁ LALIGA")
+        st.markdown(f"Mô hình thuật toán tối ưu hiện tại: **{best_model_name}**")
         
+        # Sắp xếp 4 ô KPI dạng lưới mỏng nằm ngang giống ảnh mẫu
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Tổng số dòng dữ liệu", f"{len(df):,}")
-        c2.metric("Số câu lạc bộ", df["team"].nunique())
+        c1.metric("Tổng dữ liệu trận", f"{len(df):,}")
+        c2.metric("Số CLB LaLiga", df["team"].nunique())
         c3.metric("Số mùa giải", df["season"].nunique())
         c4.metric("Bàn thắng TB/trận", f"{(df['gf'].mean() + df['ga'].mean())/2:.2f}")
         
         st.markdown("---")
-        st.subheader("📋 Phân tích Thống kê EDA mẫu dữ liệu")
         
-        tab1, tab2 = st.tabs(["📊 Phân phối xG", "📈 Ma trận Tương quan"])
-        with tab1:
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            st.subheader("📊 Mật độ phân phối xG (Home vs Away)")
             fig = px.histogram(df, x="xg", color="venue", barmode="overlay", marginal="box",
-                               title="Biểu đồ mật độ phân phối bàn thắng kỳ vọng xG (Home vs Away)",
                                color_discrete_map={"Home": "#10b981", "Away": "#3b82f6"})
+            fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig, use_container_width=True)
-        with tab2:
+            
+        with col_g2:
+            st.subheader("📈 Ma trận tương quan các chỉ số tấn công")
             corr_matrix = df[["gf", "ga", "xg", "xga", "sh", "sot"]].corr()
-            fig_corr = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale="RdBu_r",
-                                 title="Tương quan giữa xG, Bàn thắng và các chỉ số dứt điểm")
+            fig_corr = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale="Viridis")
+            fig_corr.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_corr, use_container_width=True)
 
     # ------------------ TRANG 2: MATCH PREDICTION ------------------
@@ -318,27 +331,35 @@ try:
                 
                 st.markdown("---")
                 st.subheader("⚔️ KẾT QUẢ DỰ BÁO xG TỪ MÔ HÌNH HỌC MÁY")
-                m1, m2, m3 = st.columns(3)
-                m1.metric(f"xG: {home_team} (Chủ nhà)", f"{pred_home_xg:.2f}")
-                m2.metric(f"xG: {away_team} (Khách)", f"{pred_away_xg:.2f}")
-                m3.metric("Tổng lượng xG trận đấu", f"{pred_home_xg + pred_away_xg:.2f}")
+                
+                # Cấu trúc hiển thị mạng lưới chỉ số mỏng giống như ảnh Fixtures mẫu (Góc dưới bên trái ảnh mẫu)
+                k1, k2, k3, k4 = st.columns(4)
+                k1.metric(f"Dự báo xG {home_team}", f"{pred_home_xg:.2f}")
+                k2.metric(f"Dự báo xG {away_team}", f"{pred_away_xg:.2f}")
+                k3.metric("Lịch sử sút chính xác", f"{home_last_match['sot_avg5'].values[0]:.1f}")
+                k4.metric("Chỉ số Công/Thủ kết hợp", f"{home_features['attack_defense_index'].values[0]:.2f}")
                 
                 matrix = poisson_matrix(pred_home_xg, pred_away_xg)
                 home_win, draw, away_win = calculate_outcomes(matrix)
                 
+                # Biến đổi thành biểu đồ Thanh nằm ngang (Horizontal Bar Chart) cực kỳ sang trọng giống góc dưới ảnh mẫu
                 st.markdown("---")
-                st.subheader("🎯 XÁC SUẤT KẾT QUẢ (Mô phỏng Phân phối Poisson)")
-                p1, p2, p3 = st.columns(3)
-                p1.metric(f"{home_team} Thắng", f"{home_win * 100:.1f}%")
-                p2.metric("Tỷ số Hòa", f"{draw * 100:.1f}%")
-                p3.metric(f"{away_team} Thắng", f"{away_win * 100:.1f}%")
+                st.subheader("🎯 XÁC SUẤT KẾT QUẢ TRẬN ĐẤU (Mô phỏng Poisson)")
                 
                 fig_prob = go.Figure(go.Bar(
-                    x=[home_team, "Hòa", away_team], y=[home_win * 100, draw * 100, away_win * 100],
-                    marker_color=["#10b981", "#fbbf24", "#3b82f6"],
-                    text=[f"{home_win * 100:.1f}%", f"{draw * 100:.1f}%", f"{away_win * 100:.1f}%"], textposition="outside"
+                    y=[away_team, "Hòa", home_team],
+                    x=[away_win * 100, draw * 100, home_win * 100],
+                    orientation='h',
+                    marker_color=["#3b82f6", "#fbbf24", "#10b981"],
+                    text=[f"{away_win * 100:.1f}%", f"{draw * 100:.1f}%", f"{home_win * 100:.1f}%"],
+                    textposition="inside"
                 ))
-                fig_prob.update_layout(yaxis_title="Xác suất (%)", yaxis_range=[0, 100], template="plotly_dark")
+                fig_prob.update_layout(
+                    xaxis_title="Xác suất phần trăm (%)",
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)"
+                )
                 st.plotly_chart(fig_prob, use_container_width=True)
 
     # ------------------ TRANG 3: TEAM ANALYTICS ------------------
@@ -354,9 +375,8 @@ try:
         st.subheader("⏳ Biểu đồ tiến trình xG & xGA trung bình theo mùa giải")
         seasonal_trend = team_df.groupby("season")[["xg", "xga"]].mean().reset_index()
         fig_trend = px.line(seasonal_trend, x="season", y=["xg", "xga"], markers=True,
-                            title=f"Sự dịch chuyển chất lượng chiến thuật của {selected_team}",
-                            labels={"value": "Chỉ số trung bình", "season": "Mùa giải"})
-        fig_trend.update_layout(template="plotly_dark")
+                            title=f"Sự dịch chuyển chất lượng chiến thuật của {selected_team}")
+        fig_trend.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_trend, use_container_width=True)
     # ------------------ TRANG 4: MODEL EVALUATION ------------------
     elif page == "🤖 Đánh giá Mô hình Học máy":
