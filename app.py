@@ -17,7 +17,7 @@ except ImportError:
     HAS_XGBOOST = False
 
 # =====================================================
-# CẤU HÌNH GIAO DIỆN PREMIUM DARK MODE (GIỐNG ẢNH MẪU)
+# CẤU HÌNH GIAO DIỆN PREMIUM CYBER DARK - CHỮ PHÁT SÁNG
 # =====================================================
 st.set_page_config(
     page_title="LaLiga xG Predictor & Analytics",
@@ -27,68 +27,78 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-/* Đổi phông nền tổng thể sang màu xanh đen sâu */
+/* 1. Đổi phông nền tổng thể sang màu đen sâu tăng độ tương phản chữ */
 .stApp { 
-    background-color: #0b0f19 !important; 
+    background-color: #060913 !important; 
 } 
 
-/* Ép màu chữ văn bản thông thường sang màu xám bạc dễ đọc */
-.stApp p, .stApp span, .stApp label, .stApp li {
-    color: #94a3b8 !important;
+/* 2. ÉP TOÀN BỘ CHỮ VĂN BẢN VÀ CÁC THÀNH PHẦN CON SÁNG TRẮNG TUYỆT ĐỐI */
+.stApp p, .stApp span, .stApp label, .stApp li, .stApp div, .stApp small {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    text-shadow: 0px 0px 1px rgba(255,255,255,0.2) !important;
 }
 
-/* Định dạng cấu trúc Thanh Sidebar bên trái */
+/* 3. Cấu hình riêng cho thanh Sidebar bên trái và chữ trong Sidebar */
 [data-testid="stSidebar"] { 
-    background-color: #0f172a !important; 
+    background-color: #0b0f19 !important; 
     border-right: 1px solid #1e293b !important;
 }
+[data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+    color: #e2e8f0 !important;
+}
 
-/* Định dạng các ô Thẻ hiển thị (Card Layout bo góc giống ảnh mẫu) */
+/* 4. Định dạng các ô Thẻ hiển thị bo góc (Card Layout) */
 [data-testid="stMetric"], .stMetric {
-    background-color: #111827 !important;
-    border: 1px solid #1f2937 !important;
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
     padding: 20px !important;
     border-radius: 12px !important;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
 }
 
-/* Ép các con số lớn trong Metric hiển thị màu vàng amber hoặc xanh sáng rõ nét */
+/* Ép các con số KPI lớn phát sáng màu xanh dạ quang rực rỡ */
 [data-testid="stMetricValue"] {
-    color: #38bdf8 !important;
-    font-size: 2rem !important;
-    font-weight: 700 !important;
+    color: #00ffcc !important;
+    font-size: 2.2rem !important;
+    font-weight: 800 !important;
+    text-shadow: 0px 0px 10px rgba(0, 255, 204, 0.4) !important;
 }
 
-/* Bắt buộc các thẻ tiêu đề giữ màu xanh Cyan sáng nổi bật */
+/* 5. ÉP CÁC THẺ TIÊU ĐỀ H1, H2, H3 PHÁT SÁNG MÀU XANH NEON CYBERPUNK */
 h1, h2, h3, h1 *, h2 * , h3 * { 
-    color: #38bdf8 !important; 
+    color: #00f0ff !important; 
+    font-weight: 800 !important;
+    text-shadow: 0px 0px 8px rgba(0, 240, 255, 0.5) !important;
     font-family: 'Inter', sans-serif !important;
 } 
 
-/* Định dạng các thanh Tabs chọn trang */
+/* 6. Định dạng thanh chọn Tabs */
 .stTabs [data-baseweb="tab"] { 
     color: #64748b !important; 
 } 
 .stTabs [data-baseweb="tab"][aria-selected="true"] { 
-    color: #38bdf8 !important; 
+    color: #00f0ff !important; 
     font-weight: bold !important; 
-    border-bottom-color: #38bdf8 !important;
+    border-bottom-color: #00f0ff !important;
 }
 
-/* Làm đẹp Hộp lựa chọn Selectbox giống giao diện ảnh mẫu */
+/* 7. Làm đẹp Hộp lựa chọn Selectbox và ép chữ bên trong luôn trắng sáng */
 .stSelectbox div[data-baseweb="select"] {
-    background-color: #1f2937 !important;
-    border: 1px solid #374151 !important;
+    background-color: #1e293b !important;
+    border: 1px solid #475569 !important;
     border-radius: 8px !important;
 }
 .stSelectbox div[data-baseweb="select"] * {
-    color: #f8fafc !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
+
 # =====================================================
 # TIỀN XỬ LÝ DỮ LIỆU & TẠO ĐẶC TRƯNG (FEATURE ENGINEERING)
 # =====================================================
