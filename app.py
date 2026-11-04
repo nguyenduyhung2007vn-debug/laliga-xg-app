@@ -24,22 +24,44 @@ st.set_page_config(
     page_icon="⚽",
     layout="wide"
 )
-
 st.markdown("""
 <style>
-.stApp { background-color: #0f172a; color: #f8fafc; }
-[data-testid="stSidebar"] { background-color: #1e293b; }
+/* Đổi màu nền ứng dụng và ép toàn bộ chữ hệ thống sang màu trắng sáng */
+.stApp, .stApp * { 
+    background-color: #0f172a !important; 
+    color: #f8fafc !important; 
+} 
+
+/* Giữ nguyên màu nền xanh Slate riêng cho thanh Sidebar bên trái và chữ trong Sidebar */
+[data-testid="stSidebar"], [data-testid="stSidebar"] * { 
+    background-color: #1e293b !important; 
+    color: #f8fafc !important; 
+}
+
+/* Định dạng các ô Metric KPI hiển thị con số */
 [data-testid="stMetric"] {
-    background-color: #1e293b;
-    border: 1px solid #334155;
+    background-color: #1e293b !important;
+    border: 1px solid #334155 !important;
     padding: 15px;
     border-radius: 10px;
 }
-h1, h2, h3 { color: #38bdf8 !important; }
-.stTabs [data-baseweb="tab"] { color: #94a3b8; }
-.stTabs [data-baseweb="tab"][aria-selected="true"] { color: #38bdf8; font-weight: bold; }
+
+/* Bắt buộc các thẻ tiêu đề h1, h2, h3 giữ màu xanh neon công nghệ */
+h1, h2, h3, h1 *, h2 * , h3 * { 
+    color: #38bdf8 !important; 
+} 
+
+/* Định dạng thanh chọn Tabs */
+.stTabs [data-baseweb="tab"] { 
+    color: #94a3b8 !important; 
+} 
+.stTabs [data-baseweb="tab"][aria-selected="true"] { 
+    color: #38bdf8 !important; 
+    font-weight: bold !important; 
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
