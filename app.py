@@ -82,11 +82,10 @@ DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
 # =====================================================
 # TIỀN XỬ LÝ DỮ LIỆU & TẠO ĐẶC TRƯNG (FEATURE ENGINEERING)
 # =====================================================
-@st.cache_data
+@st.cache_data(ttl=600)  
 def load_and_process_data(file_path):
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip().str.lower()
-    
     df["team"] = df["team"].astype(str).str.strip()
     df["opponent"] = df["opponent"].astype(str).str.strip()
     df["venue"] = df["venue"].astype(str).str.strip().str.lower().replace({
