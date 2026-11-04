@@ -181,9 +181,6 @@ def calculate_outcomes(matrix):
     away_win = np.triu(matrix, 1).sum()
     total = home_win + draw + away_win
     return home_win / total, draw / total, away_win / total
-# =====================================================
-# SIDEBAR & ĐIỀU HƯỚNG GIAO DIỆN HỆ THỐNG
-# =====================================================
 st.sidebar.title("⚽ LaLiga xG Predictor")
 st.sidebar.caption("Machine Learning Analytics Dashboard")
 st.sidebar.markdown("---")
@@ -205,11 +202,12 @@ try:
     if not DATA_FILE.exists():
         st.error(f"Không tìm thấy file dữ liệu '{DATA_FILE.name}'. Vui lòng tải file 'matches_laliga_clean.csv' lên thư mục.")
         st.stop()
+        
+    # ĐÃ SỬA LỖI CĂN LỀ: Toàn bộ các dòng logic bên dưới đã được thụt lề (thêm Tab) hợp lệ vào trong khối with
     with st.spinner("⚽ Hệ thống đang huấn luyện AI và tính toán phong độ... Vui lòng đợi trong giây lát!"):
         df, feature_cols = load_and_process_data(DATA_FILE)
         best_model, best_model_name, model_metrics, X_test, y_test, test_preds = train_ml_models(df, feature_cols)
         teams = sorted(df["team"].unique().tolist())
-   
     # ------------------ TRANG 1: TỔNG QUAN ------------------
     if page == "🏠 Tổng quan hệ thống":
         st.title("🏆 HỆ THỐNG PHÂN TÍCH & DỰ ĐOÁN BÓNG ĐÁ LALIGA")
@@ -255,27 +253,26 @@ try:
             if home_last_match.empty or away_last_match.empty:
                 st.error("Thiếu lịch sử phong độ để tạo đặc trưng cho cặp đấu này.")
             else:
-                # SỬA HOÀN TOÀN LỖI: Đồng loạt gọi chính xác chỉ mục [0] sau .iloc
                 home_features = pd.DataFrame([{
-                    "xg_avg5": home_last_match["xg_avg5"].iloc[0], "xga_avg5": home_last_match["xga_avg5"].iloc[0],
-                    "goals_avg5": home_last_match["goals_avg5"].iloc[0], "goals_against_avg5": home_last_match["goals_against_avg5"].iloc[0],
-                    "sot_avg5": home_last_match["sot_avg5"].iloc[0], "xg_avg3": home_last_match["xg_avg3"].iloc[0],
-                    "opponent_xg_avg5": away_last_match["xg_avg5"].iloc[0], "opponent_xga_avg5": away_last_match["xga_avg5"].iloc[0],
-                    "is_home": 1, "matches_seen": home_last_match["matches_seen"].iloc[0] + 1, "short_history": 0,
-                    "opponent_matches_seen": away_last_match["matches_seen"].iloc[0] + 1, "opponent_short_history": 0,
-                    "net_xg_avg5": home_last_match["net_xg_avg5"].iloc[0],
-                    "attack_defense_index": (home_last_match["xg_avg5"].iloc[0] + away_last_match["xga_avg5"].iloc[0]) / 2
+                    "xg_avg5": home_last_match["xg_avg5"].values[0], "xga_avg5": home_last_match["xga_avg5"].values[0],
+                    "goals_avg5": home_last_match["goals_avg5"].values[0], "goals_against_avg5": home_last_match["goals_against_avg5"].values[0],
+                    "sot_avg5": home_last_match["sot_avg5"].values[0], "xg_avg3": home_last_match["xg_avg3"].values[0],
+                    "opponent_xg_avg5": away_last_match["xg_avg5"].values[0], "opponent_xga_avg5": away_last_match["xga_avg5"].values[0],
+                    "is_home": 1, "matches_seen": home_last_match["matches_seen"].values[0] + 1, "short_history": 0,
+                    "opponent_matches_seen": away_last_match["matches_seen"].values[0] + 1, "opponent_short_history": 0,
+                    "net_xg_avg5": home_last_match["net_xg_avg5"].values[0],
+                    "attack_defense_index": (home_last_match["xg_avg5"].values[0] + away_last_match["xga_avg5"].values[0]) / 2
                 }])
                 
                 away_features = pd.DataFrame([{
-                    "xg_avg5": away_last_match["xg_avg5"].iloc[0], "xga_avg5": away_last_match["xga_avg5"].iloc[0],
-                    "goals_avg5": away_last_match["goals_avg5"].iloc[0], "goals_against_avg5": away_last_match["goals_against_avg5"].iloc[0],
-                    "sot_avg5": away_last_match["sot_avg5"].iloc[0], "xg_avg3": away_last_match["xg_avg3"].iloc[0],
-                    "opponent_xg_avg5": home_last_match["xg_avg5"].iloc[0], "opponent_xga_avg5": home_last_match["xga_avg5"].iloc[0],
-                    "is_home": 0, "matches_seen": away_last_match["matches_seen"].iloc[0] + 1, "short_history": 0,
-                    "opponent_matches_seen": home_last_match["matches_seen"].iloc[0] + 1, "opponent_short_history": 0,
-                    "net_xg_avg5": away_last_match["net_xg_avg5"].iloc[0],
-                    "attack_defense_index": (away_last_match["xg_avg5"].iloc[0] + home_last_match["xga_avg5"].iloc[0]) / 2
+                    "xg_avg5": away_last_match["xg_avg5"].values[0], "xga_avg5": away_last_match["xga_avg5"].values[0],
+                    "goals_avg5": away_last_match["goals_avg5"].values[0], "goals_against_avg5": away_last_match["goals_against_avg5"].values[0],
+                    "sot_avg5": away_last_match["sot_avg5"].values[0], "xg_avg3": away_last_match["xg_avg3"].values[0],
+                    "opponent_xg_avg5": home_last_match["xg_avg5"].values[0], "opponent_xga_avg5": home_last_match["xga_avg5"].values[0],
+                    "is_home": 0, "matches_seen": away_last_match["matches_seen"].values[0] + 1, "short_history": 0,
+                    "opponent_matches_seen": home_last_match["matches_seen"].values[0] + 1, "opponent_short_history": 0,
+                    "net_xg_avg5": away_last_match["net_xg_avg5"].values[0],
+                    "attack_defense_index": (away_last_match["xg_avg5"].values[0] + home_last_match["xga_avg5"].values[0]) / 2
                 }])
                 
                 raw_pred_home = best_model.predict(home_features[feature_cols])
