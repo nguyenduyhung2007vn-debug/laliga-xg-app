@@ -116,7 +116,7 @@ def train_ml_models(df, feature_cols):
     X_test, y_test = test_df[feature_cols], test_df["xg"]
     
     # Mô hình 1: Random Forest
-    rf_model = RandomForestRegressor(n_estimators=100, max_depth=8, random_state=42)
+    rf_model = RandomForestRegressor(n_estimators=50, max_depth=6, random_state=42)
     rf_model.fit(X_train, y_train)
     rf_pred = rf_model.predict(X_test)
     
@@ -205,10 +205,11 @@ try:
     if not DATA_FILE.exists():
         st.error(f"Không tìm thấy file dữ liệu '{DATA_FILE.name}'. Vui lòng tải file 'matches_laliga_clean.csv' lên thư mục.")
         st.stop()
-        
+    with st.spinner("⚽ Hệ thống đang huấn luyện AI và tính toán phong độ... Vui lòng đợi trong giây lát!"):
     df, feature_cols = load_and_process_data(DATA_FILE)
     best_model, best_model_name, model_metrics, X_test, y_test, test_preds = train_ml_models(df, feature_cols)
     teams = sorted(df["team"].unique().tolist())
+   
     # ------------------ TRANG 1: TỔNG QUAN ------------------
     if page == "🏠 Tổng quan hệ thống":
         st.title("🏆 HỆ THỐNG PHÂN TÍCH & DỰ ĐOÁN BÓNG ĐÁ LALIGA")
