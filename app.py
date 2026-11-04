@@ -206,9 +206,9 @@ try:
         st.error(f"Không tìm thấy file dữ liệu '{DATA_FILE.name}'. Vui lòng tải file 'matches_laliga_clean.csv' lên thư mục.")
         st.stop()
     with st.spinner("⚽ Hệ thống đang huấn luyện AI và tính toán phong độ... Vui lòng đợi trong giây lát!"):
-    df, feature_cols = load_and_process_data(DATA_FILE)
-    best_model, best_model_name, model_metrics, X_test, y_test, test_preds = train_ml_models(df, feature_cols)
-    teams = sorted(df["team"].unique().tolist())
+        df, feature_cols = load_and_process_data(DATA_FILE)
+        best_model, best_model_name, model_metrics, X_test, y_test, test_preds = train_ml_models(df, feature_cols)
+        teams = sorted(df["team"].unique().tolist())
    
     # ------------------ TRANG 1: TỔNG QUAN ------------------
     if page == "🏠 Tổng quan hệ thống":
