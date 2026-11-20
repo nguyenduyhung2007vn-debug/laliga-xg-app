@@ -1,4 +1,4 @@
-#Phần 1: Khai báo thư viện & Cấu hình giao diện CSS
+# Phần 1: Khai báo thư viện & Cấu hình giao diện CSS
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -8,7 +8,7 @@ from scipy.stats import poisson
 from pathlib import Path
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 try:
     from xgboost import XGBRegressor
@@ -68,19 +68,21 @@ h1, h2, h3, h1 *, h2 *, h3 * {
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
-#Khối 2: Tiền xử lý dữ liệu & Trích xuất đặc trưng (Feature Engineering)
+# Khối 2: Tiền xử lý dữ liệu & Trích xuất đặc trưng (Feature Engineering)
 @st.cache_data
 def load_and_process_data(file_path):
     df = pd.read_csv(file_path)
     df.columns = df.columns.str.strip().str.lower()
     df = df.drop(columns=["unnamed: 0", "notes"], errors="ignore")
 
+    # Chuẩn hóa tên đội bóng (Đã bổ sung Betis -> Real Betis để ghép khớp 100% dữ liệu đối thủ)
     team_name_map = {
         "Atlético Madrid": "Atletico Madrid",
         "Alavés": "Alaves",
         "Leganés": "Leganes",
         "Cádiz": "Cadiz",
-        "Almería": "Almeria"
+        "Almería": "Almeria",
+        "Betis": "Real Betis"
     }
     df["team"] = df["team"].astype(str).str.strip().replace(team_name_map)
     df["opponent"] = df["opponent"].astype(str).str.strip().replace(team_name_map)
@@ -99,6 +101,7 @@ def load_and_process_data(file_path):
 
     df["is_home"] = (df["venue"] == "Home").astype(int)
 
+    # Tính trung bình trượt (Rolling Window) kèm shift(1) chống Data Leakage
     df["xg_avg5"] = df.groupby("team")["xg"].transform(lambda x: x.shift(1).rolling(5, min_periods=1).mean())
     df["xga_avg5"] = df.groupby("team")["xga"].transform(lambda x: x.shift(1).rolling(5, min_periods=1).mean())
     df["goals_avg5"] = df.groupby("team")["gf"].transform(lambda x: x.shift(1).rolling(5, min_periods=1).mean())
@@ -120,12 +123,14 @@ def load_and_process_data(file_path):
     final_df = pd.merge(df, opp_df, on=["date", "team", "opponent"], how="left")
     final_df["attack_defense_index"] = (final_df["xg_avg5"] + final_df["opponent_xga_avg5"]) / 2
 
+    # 15 đặc trưng đầu vào chính thức
     feature_cols = [
         "xg_avg5", "xga_avg5", "goals_avg5", "goals_against_avg5", "sot_avg5", "xg_avg3",
         "opponent_xg_avg5", "opponent_xga_avg5", "is_home", "matches_seen", "short_history",
         "opponent_matches_seen", "opponent_short_history", "net_xg_avg5", "attack_defense_index"
     ]
 
+    # Xử lý dữ liệu thiếu (Cold-start) bằng Median Imputation chỉ tính trên tập Train
     max_season = final_df["season"].max()
     train_mask = final_df["season"] < max_season
     train_medians = final_df.loc[train_mask, feature_cols].median() if train_mask.any() else final_df[feature_cols].median()
@@ -134,8 +139,7 @@ def load_and_process_data(file_path):
         final_df[col] = final_df[col].fillna(train_medians[col])
 
     return final_df, feature_cols
-
-#Khối 3: Huấn luyện mô hình ML & Hàm mô phỏng Poisson
+# Khối 3: Huấn luyện mô hình ML & Hàm mô phỏng Poisson
 @st.cache_resource
 def train_ml_models(df, feature_cols):
     df_sorted = df.sort_values("date").reset_index(drop=True)
@@ -171,7 +175,8 @@ def train_ml_models(df, feature_cols):
     for name, item in candidates.items():
         metrics[name] = {
             "MAE": mean_absolute_error(y_test, item["pred"]),
-            "RMSE": np.sqrt(mean_squared_error(y_test, item["pred"]))
+            "RMSE": np.sqrt(mean_squared_error(y_test, item["pred"])),
+            "R2": r2_score(y_test, item["pred"])
         }
 
     best_model_name = min(metrics, key=lambda k: metrics[k]["MAE"])
@@ -181,7 +186,8 @@ def train_ml_models(df, feature_cols):
     base_pred = X_test["xg_avg5"].values
     metrics["Historical Baseline"] = {
         "MAE": mean_absolute_error(y_test, base_pred),
-        "RMSE": np.sqrt(mean_squared_error(y_test, base_pred))
+        "RMSE": np.sqrt(mean_squared_error(y_test, base_pred)),
+        "R2": r2_score(y_test, base_pred)
     }
 
     return best_model, best_model_name, metrics, X_test, y_test, best_pred, int(max_season)
@@ -220,7 +226,7 @@ def calculate_outcomes(matrix):
     away_win = np.triu(matrix, 1).sum()
     total = home_win + draw + away_win
     return home_win / total, draw / total, away_win / total
-#Khối 4: Thanh điều hướng (Sidebar) & Trang 1 (Tổng quan hệ thống)
+# Khối 4: Thanh điều hướng (Sidebar) & Trang 1 (Tổng quan hệ thống)
 st.sidebar.title("⚽ LaLiga xG Predictor")
 st.sidebar.caption("Machine Learning & Poisson Analytics")
 st.sidebar.markdown("---")
@@ -255,7 +261,7 @@ try:
         st.markdown(f"Thuật toán tối ưu đang kích hoạt: **{best_model_name}** | Mùa giải kiểm thử: **{test_season}**")
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Tổng bản ghi trận", f"{len(df):,}")
+        c1.metric("Tổng bản ghi đội–trận", f"{len(df):,}")
         c2.metric("Số CLB LaLiga", df["team"].nunique())
         c3.metric("Số mùa giải", df["season"].nunique())
         c4.metric("Bàn thắng TB/trận", f"{df['gf'].mean():.2f}")
@@ -279,7 +285,7 @@ try:
             fig_corr = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale="Tealgrn")
             fig_corr.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_corr, use_container_width=True)
-#Khối 5: Trang 2 (Match Prediction & Ma trận tỷ số Poisson)
+# Khối 5: Trang 2 (Match Prediction & Ma trận tỷ số Poisson)
     # ------------------ TRANG 2: MATCH PREDICTION ------------------
     elif page == "🏟️ Match Prediction (Học máy)":
         st.title("🏟️ DỰ ĐOÁN TRẬN ĐẤU & MÔ PHỎNG POISSON")
@@ -367,8 +373,8 @@ try:
                     plot_bgcolor="rgba(0,0,0,0)"
                 )
                 st.plotly_chart(fig_heat, use_container_width=True)
-#Khối 6: Trang 3 (Phân tích phong độ), Trang 4 (Đánh giá mô hình) & Xử lý ngoại lệ
-                    # ------------------ TRANG 3: TEAM ANALYTICS ------------------
+# Khối 6: Trang 3 (Phân tích phong độ), Trang 4 (Đánh giá mô hình) & Xử lý ngoại lệ
+    # ------------------ TRANG 3: TEAM ANALYTICS ------------------
     elif page == "📊 Phân tích xG & Phong độ":
         st.title("📈 PHÂN TÍCH HỒ SƠ PHONG ĐỘ CÂU LẠC BỘ")
         selected_team = st.selectbox("Chọn câu lạc bộ cần tra cứu", teams)
@@ -399,7 +405,7 @@ try:
     # ------------------ TRANG 4: MODEL EVALUATION ------------------
     elif page == "🤖 Đánh giá Mô hình Học máy":
         st.title("🤖 THỰC NGHIỆM VÀ ĐÁNH GIÁ ĐỘ CHÍNH XÁC MÔ HÌNH")
-        st.markdown(f"Kết quả kiểm thử độc lập trên toàn bộ **mùa giải {test_season}** ({len(X_test)} mẫu trận đấu).")
+        st.markdown(f"Kết quả kiểm thử độc lập trên **mùa giải {test_season}** ({len(X_test)} bản ghi đội–trận, tương ứng {len(X_test)//2} trận đấu).")
 
         st.subheader("📊 Bảng đối chiếu sai số giữa các thuật toán")
         metrics_data = []
@@ -408,6 +414,7 @@ try:
                 "Thuật toán mô hình": model_name,
                 "MAE (Sai số tuyệt đối TB)": f"{score['MAE']:.4f}",
                 "RMSE (Sai số bình phương TB)": f"{score['RMSE']:.4f}",
+                "R² (Hệ số xác định)": f"{score['R2']:.4f}",
                 "Trạng thái": "🏆 Tối ưu nhất" if model_name == best_model_name else "Đối chiếu"
             })
         st.table(pd.DataFrame(metrics_data))
@@ -458,5 +465,3 @@ try:
 except Exception as e:
     st.error(f"Ứng dụng gặp sự cố kỹ thuật trong quá trình xử lý: {e}")
     st.info("Hãy đảm bảo tệp dữ liệu 'matches_laliga_clean.csv' nằm cùng thư mục với file 'app.py'.")
-
-            
