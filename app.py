@@ -1,4 +1,4 @@
-# Phần 1: Khai báo thư viện & Cấu hình giao diện CSS
+# Khối 1: Khai báo thư viện & Cấu hình giao diện CSS
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -36,6 +36,14 @@ st.markdown("""
     background-color: #0b0f19 !important;
     border-right: 1px solid #1e293b !important;
 }
+[data-testid="stAlert"] {
+    background-color: #064e3b !important;
+    border: 1px solid #00ffcc !important;
+    border-radius: 8px !important;
+}
+[data-testid="stAlert"] * {
+    color: #00ffcc !important;
+}
 [data-testid="stMetric"], .stMetric {
     background: linear-gradient(145deg, #0f172a, #1e293b) !important;
     border: 1px solid #334155 !important;
@@ -63,6 +71,14 @@ h1, h2, h3, h1 *, h2 *, h3 * {
     color: #ffffff !important;
     font-weight: 600 !important;
 }
+.explain-box {
+    background: linear-gradient(145deg, #0f172a, #162238);
+    border-left: 4px solid #00ffcc;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin: 12px 0;
+    line-height: 1.6;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -75,7 +91,6 @@ def load_and_process_data(file_path):
     df.columns = df.columns.str.strip().str.lower()
     df = df.drop(columns=["unnamed: 0", "notes"], errors="ignore")
 
-    # Chuẩn hóa tên đội bóng (Đã bổ sung Betis -> Real Betis để ghép khớp 100% dữ liệu đối thủ)
     team_name_map = {
         "Atlético Madrid": "Atletico Madrid",
         "Alavés": "Alaves",
@@ -101,7 +116,6 @@ def load_and_process_data(file_path):
 
     df["is_home"] = (df["venue"] == "Home").astype(int)
 
-    # Tính trung bình trượt (Rolling Window) kèm shift(1) chống Data Leakage
     df["xg_avg5"] = df.groupby("team")["xg"].transform(lambda x: x.shift(1).rolling(5, min_periods=1).mean())
     df["xga_avg5"] = df.groupby("team")["xga"].transform(lambda x: x.shift(1).rolling(5, min_periods=1).mean())
     df["goals_avg5"] = df.groupby("team")["gf"].transform(lambda x: x.shift(1).rolling(5, min_periods=1).mean())
@@ -123,14 +137,12 @@ def load_and_process_data(file_path):
     final_df = pd.merge(df, opp_df, on=["date", "team", "opponent"], how="left")
     final_df["attack_defense_index"] = (final_df["xg_avg5"] + final_df["opponent_xga_avg5"]) / 2
 
-    # 15 đặc trưng đầu vào chính thức
     feature_cols = [
         "xg_avg5", "xga_avg5", "goals_avg5", "goals_against_avg5", "sot_avg5", "xg_avg3",
         "opponent_xg_avg5", "opponent_xga_avg5", "is_home", "matches_seen", "short_history",
         "opponent_matches_seen", "opponent_short_history", "net_xg_avg5", "attack_defense_index"
     ]
 
-    # Xử lý dữ liệu thiếu (Cold-start) bằng Median Imputation chỉ tính trên tập Train
     max_season = final_df["season"].max()
     train_mask = final_df["season"] < max_season
     train_medians = final_df.loc[train_mask, feature_cols].median() if train_mask.any() else final_df[feature_cols].median()
@@ -190,7 +202,7 @@ def train_ml_models(df, feature_cols):
         "R2": r2_score(y_test, base_pred)
     }
 
-    return best_model, best_model_name, metrics, X_test, y_test, best_pred, int(max_season)
+    return best_model, best_model_name, metrics, X_test, y_test, best_pred, int(max_season), test_df
 
 def build_latest_team_stats(df, team_name):
     team_matches = df[df["team"] == team_name].sort_values("date")
@@ -249,7 +261,7 @@ try:
 
     with st.spinner("⚽ Đang nạp dữ liệu và huấn luyện mô hình..."):
         df, feature_cols = load_and_process_data(DATA_FILE)
-        best_model, best_model_name, model_metrics, X_test, y_test, test_preds, test_season = train_ml_models(df, feature_cols)
+        best_model, best_model_name, model_metrics, X_test, y_test, test_preds, test_season, test_df = train_ml_models(df, feature_cols)
         teams = sorted(df["team"].unique().tolist())
 
     st.sidebar.success(f"Mô hình tối ưu: **{best_model_name}**")
@@ -265,6 +277,25 @@ try:
         c2.metric("Số CLB LaLiga", df["team"].nunique())
         c3.metric("Số mùa giải", df["season"].nunique())
         c4.metric("Bàn thắng TB/trận", f"{df['gf'].mean():.2f}")
+
+        with st.expander("💡 Hiểu xG (Expected Goals) trong 30 giây — Dành cho người mới", expanded=True):
+            g1, g2 = st.columns([1.4, 1])
+            with g1:
+                st.markdown("""
+                * **xG (Bàn thắng kỳ vọng) là gì?** Đo chất lượng các cơ hội ghi bàn mà một đội tạo ra (từ `0.01` đến `1.00` cho mỗi cú sút).
+                * **Ví dụ:** Một cú sút có `xG = 0.25` nghĩa là trung bình 100 cú sút tương tự sẽ có **25 bàn thắng**. Nếu đội A tạo ra 4 cơ hội như vậy, tổng **xG của đội A là 1.00**.
+                * **Lưu ý:** `xG` đo chất lượng cơ hội tạo ra trước trận, không phải tỷ số chắc chắn của trận đấu.
+                """)
+            with g2:
+                shot_case = st.selectbox(
+                    "Thử nghiệm nhanh chất lượng tình huống sút:",
+                    [
+                        "Sút cận thành góc rộng (~0.65 xG)",
+                        "Đá phạt đền Penalty 11m (~0.79 xG)",
+                        "Sút xa ngoài vòng cấm >20m (~0.04 xG)"
+                    ]
+                )
+                st.info(f"Đánh giá tình huống: **{shot_case}**")
 
         st.markdown("---")
 
@@ -289,17 +320,30 @@ try:
     # ------------------ TRANG 2: MATCH PREDICTION ------------------
     elif page == "🏟️ Match Prediction (Học máy)":
         st.title("🏟️ DỰ ĐOÁN TRẬN ĐẤU & MÔ PHỎNG POISSON")
-        st.markdown(f"Dự báo dựa trên phong độ 5 trận gần nhất bằng mô hình **{best_model_name}**.")
+        st.markdown(f"Thuật toán kích hoạt: **{best_model_name}** | Kết hợp mô phỏng xác suất tỷ số Poisson.")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            home_team = st.selectbox("🏠 Chọn đội chủ nhà (Home)", teams, index=teams.index("Barcelona") if "Barcelona" in teams else 0)
-        with col2:
-            away_team = st.selectbox("🚀 Chọn đội khách (Away)", teams, index=teams.index("Real Madrid") if "Real Madrid" in teams else 1)
+        pred_mode = st.radio(
+            "Chọn chế độ dự báo:",
+            [
+                "🎯 Mô phỏng cặp đấu tùy chọn (Dựa trên phong độ 5 trận gần nhất)",
+                "📅 Kiểm chứng hồi cứu trận thực tế trong tập Test (Mùa giải 2025/26)"
+            ],
+            horizontal=True
+        )
 
-        if home_team == away_team:
-            st.warning("⚠️ Vui lòng chọn 2 câu lạc bộ khác nhau để thiết lập cặp đấu.")
-        else:
+        actual_home_xg, actual_away_xg, actual_gf, actual_ga = None, None, None, None
+
+        if pred_mode.startswith("🎯"):
+            col1, col2 = st.columns(2)
+            with col1:
+                home_team = st.selectbox("🏠 Chọn đội chủ nhà (Home)", teams, index=teams.index("Barcelona") if "Barcelona" in teams else 0)
+            with col2:
+                away_team = st.selectbox("🚀 Chọn đội khách (Away)", teams, index=teams.index("Real Madrid") if "Real Madrid" in teams else 1)
+
+            if home_team == away_team:
+                st.warning("⚠️ Vui lòng chọn 2 câu lạc bộ khác nhau để thiết lập cặp đấu.")
+                st.stop()
+
             h_stats = build_latest_team_stats(df, home_team)
             a_stats = build_latest_team_stats(df, away_team)
 
@@ -322,69 +366,114 @@ try:
                 "opponent_short_history": h_stats["short_history"],
                 "attack_defense_index": (a_stats["xg_avg5"] + h_stats["xga_avg5"]) / 2
             }])
+            h_sot_disp, a_sot_disp = h_stats["sot_avg5"], a_stats["sot_avg5"]
+        else:
+            home_matches_test = test_df[test_df["venue"] == "Home"].sort_values("date", ascending=False).copy()
+            home_matches_test["label"] = (
+                home_matches_test["date"].dt.strftime("%Y-%m-%d") + " | " +
+                home_matches_test["team"] + " vs " + home_matches_test["opponent"]
+            )
+            chosen_match = st.selectbox("Chọn trận đấu thực tế trong tập Test (Mùa 2025/26):", home_matches_test["label"].tolist())
+            h_row = home_matches_test[home_matches_test["label"] == chosen_match].iloc[0]
+            home_team = h_row["team"]
+            away_team = h_row["opponent"]
 
-            pred_home_xg = max(0.1, float(best_model.predict(home_features[feature_cols])[0]))
-            pred_away_xg = max(0.1, float(best_model.predict(away_features[feature_cols])[0]))
+            a_row = test_df[(test_df["date"] == h_row["date"]) & (test_df["team"] == away_team) & (test_df["venue"] == "Away")].iloc[0]
+            home_features = pd.DataFrame([h_row[feature_cols].to_dict()])
+            away_features = pd.DataFrame([a_row[feature_cols].to_dict()])
 
-            st.markdown("---")
-            st.subheader("⚔️ CHỈ SỐ BÀN THẮNG KỲ VỌNG DỰ BÁO (xG)")
+            h_sot_disp, a_sot_disp = float(h_row["sot_avg5"]), float(a_row["sot_avg5"])
+            actual_home_xg, actual_away_xg = float(h_row["xg"]), float(a_row["xg"])
+            actual_gf, actual_ga = int(h_row["gf"]), int(a_row["gf"])
 
-            k1, k2, k3, k4 = st.columns(4)
-            k1.metric(f"Dự báo xG {home_team}", f"{pred_home_xg:.2f}")
-            k2.metric(f"Dự báo xG {away_team}", f"{pred_away_xg:.2f}")
-            k3.metric(f"Sút trúng đích TB ({home_team})", f"{h_stats['sot_avg5']:.1f}")
-            k4.metric(f"Sút trúng đích TB ({away_team})", f"{a_stats['sot_avg5']:.1f}")
+        pred_home_xg = max(0.1, float(best_model.predict(home_features[feature_cols])[0]))
+        pred_away_xg = max(0.1, float(best_model.predict(away_features[feature_cols])[0]))
 
-            matrix = poisson_matrix(pred_home_xg, pred_away_xg, max_goals=6)
-            home_win, draw, away_win = calculate_outcomes(matrix)
+        st.markdown("---")
+        st.subheader("⚔️ CHỈ SỐ BÀN THẮNG KỲ VỌNG DỰ BÁO (xG)")
 
-            st.markdown("---")
-            col_p1, col_p2 = st.columns([1.1, 1])
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric(f"Dự báo xG {home_team}", f"{pred_home_xg:.2f}")
+        k2.metric(f"Dự báo xG {away_team}", f"{pred_away_xg:.2f}")
+        k3.metric(f"Sút trúng đích TB ({home_team})", f"{h_sot_disp:.1f}")
+        k4.metric(f"Sút trúng đích TB ({away_team})", f"{a_sot_disp:.1f}")
 
-            with col_p1:
-                st.subheader("🎯 Xác suất kết quả trận đấu (1X2)")
-                fig_prob = go.Figure(go.Bar(
-                    y=[f"{away_team} Thắng", "Hòa", f"{home_team} Thắng"],
-                    x=[away_win * 100, draw * 100, home_win * 100],
-                    orientation='h',
-                    marker_color=["#3b82f6", "#fbbf24", "#00ffcc"],
-                    text=[f"{away_win * 100:.1f}%", f"{draw * 100:.1f}%", f"{home_win * 100:.1f}%"],
-                    textposition="inside"
-                ))
-                fig_prob.update_layout(
-                    xaxis_title="Xác suất (%)",
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)"
-                )
-                st.plotly_chart(fig_prob, use_container_width=True)
+        stronger_team = home_team if pred_home_xg > pred_away_xg else away_team
+        xg_gap = abs(pred_home_xg - pred_away_xg)
+        st.markdown(f"""
+        <div class="explain-box">
+            <b>🤖 AI Giải thích dự báo:</b> Mô hình ước tính <b>{home_team}</b> tạo ra chất lượng cơ hội tương đương <b>{pred_home_xg:.2f} xG</b> và <b>{away_team}</b> đạt <b>{pred_away_xg:.2f} xG</b>. 
+            <b>{stronger_team}</b> nhỉnh hơn về khả năng tạo cơ hội ghi bàn (chênh lệch <b>{xg_gap:.2f} xG</b>) dựa trên lợi thế sân bãi và phong độ công – thủ 5 trận trước đó. 
+            <i>(Lưu ý: xG phản ánh chất lượng cơ hội tạo ra, không phải tỷ số chắc chắn của trận đấu).</i>
+        </div>
+        """, unsafe_allow_html=True)
 
-            with col_p2:
-                st.subheader("🔢 Ma trận xác suất tỷ số chính xác (%)")
-                score_df = pd.DataFrame(
-                    np.round(matrix[:5, :5] * 100, 1),
-                    index=[f"{home_team} {i}" for i in range(5)],
-                    columns=[f"{away_team} {j}" for j in range(5)]
-                )
-                fig_heat = px.imshow(score_df, text_auto=True, color_continuous_scale="Blues")
-                fig_heat.update_layout(
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)"
-                )
-                st.plotly_chart(fig_heat, use_container_width=True)
+        if actual_home_xg is not None:
+            st.subheader("⚖️ Đối chiếu thực tế sau trận đấu (xG Dự báo vs xG Thực tế vs Bàn thắng)")
+            c_act1, c_act2, c_act3 = st.columns(3)
+            c_act1.metric(f"xG Thực tế ({home_team})", f"{actual_home_xg:.2f}", f"Lệch: {pred_home_xg - actual_home_xg:+.2f}")
+            c_act2.metric(f"xG Thực tế ({away_team})", f"{actual_away_xg:.2f}", f"Lệch: {pred_away_xg - actual_away_xg:+.2f}")
+            c_act3.metric("Tỷ số thực tế trên sân", f"{actual_gf} - {actual_ga}", f"{home_team} vs {away_team}")
+
+        matrix = poisson_matrix(pred_home_xg, pred_away_xg, max_goals=6)
+        home_win, draw, away_win = calculate_outcomes(matrix)
+
+        flat_scores = [(f"{home_team} {i} - {j} {away_team}", matrix[i, j] * 100) for i in range(5) for j in range(5)]
+        top3_scores = sorted(flat_scores, key=lambda x: x[1], reverse=True)[:3]
+
+        st.markdown("---")
+        col_p1, col_p2 = st.columns([1.05, 1.15])
+
+        with col_p1:
+            st.subheader("🎯 Xác suất kết quả trận đấu (1X2)")
+            fig_prob = go.Figure(go.Bar(
+                y=[f"{away_team} Thắng", "Hòa", f"{home_team} Thắng"],
+                x=[away_win * 100, draw * 100, home_win * 100],
+                orientation='h',
+                marker_color=["#3b82f6", "#fbbf24", "#00ffcc"],
+                text=[f"{away_win * 100:.1f}%", f"{draw * 100:.1f}%", f"{home_win * 100:.1f}%"],
+                textposition="inside"
+            ))
+            fig_prob.update_layout(
+                xaxis_title="Xác suất (%)",
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_prob, use_container_width=True)
+
+            st.markdown("**🔥 Top 3 tỷ số có xác suất cao nhất:**")
+            for idx_s, (sc_label, sc_prob) in enumerate(top3_scores, 1):
+                st.markdown(f"- Hạng {idx_s}: **{sc_label}** (`{sc_prob:.1f}%`)")
+
+        with col_p2:
+            st.subheader("🔢 Ma trận xác suất tỷ số chính xác (%)")
+            score_df = pd.DataFrame(
+                np.round(matrix[:5, :5] * 100, 1),
+                index=[f"{home_team} {i}" for i in range(5)],
+                columns=[f"{away_team} {j}" for j in range(5)]
+            )
+            fig_heat = px.imshow(score_df, text_auto=True, color_continuous_scale="Blues")
+            fig_heat.update_layout(
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)"
+            )
+            st.plotly_chart(fig_heat, use_container_width=True)
 # Khối 6: Trang 3 (Phân tích phong độ), Trang 4 (Đánh giá mô hình) & Xử lý ngoại lệ
     # ------------------ TRANG 3: TEAM ANALYTICS ------------------
     elif page == "📊 Phân tích xG & Phong độ":
         st.title("📈 PHÂN TÍCH HỒ SƠ PHONG ĐỘ CÂU LẠC BỘ")
         selected_team = st.selectbox("Chọn câu lạc bộ cần tra cứu", teams)
         team_df = df[df["team"] == selected_team].sort_values("date", ascending=False)
+        xg_diff = team_df["gf"].mean() - team_df["xg"].mean()
 
-        t1, t2, t3, t4 = st.columns(4)
+        t1, t2, t3, t4, t5 = st.columns(5)
         t1.metric("Số trận đã đấu", len(team_df))
         t2.metric("xG trung bình/trận", f"{team_df['xg'].mean():.2f}")
         t3.metric("xGA trung bình/trận", f"{team_df['xga'].mean():.2f}")
         t4.metric("Bàn thắng TB/trận", f"{team_df['gf'].mean():.2f}")
+        t5.metric("Hiệu suất (GF - xG)", f"{xg_diff:+.2f}", "Vượt kỳ vọng" if xg_diff > 0 else "Dưới kỳ vọng")
 
         st.markdown("---")
         st.subheader("⏳ Diễn biến chỉ số xG & xGA trung bình qua các mùa giải")
@@ -417,13 +506,21 @@ try:
                 "R² (Hệ số xác định)": f"{score['R2']:.4f}",
                 "Trạng thái": "🏆 Tối ưu nhất" if model_name == best_model_name else "Đối chiếu"
             })
-        st.table(pd.DataFrame(metrics_data))
+        metrics_df = pd.DataFrame(metrics_data)
+        st.table(metrics_df)
+
+        st.download_button(
+            label="📥 Tải bảng kết quả đánh giá (.CSV)",
+            data=metrics_df.to_csv(index=False).encode("utf-8-sig"),
+            file_name="laliga_xg_model_benchmark.csv",
+            mime="text/csv"
+        )
 
         st.markdown("---")
-        col_g1, col_g2 = st.columns(2)
+        col_g1, col_g2, col_g3 = st.columns(3)
 
         with col_g1:
-            st.subheader("🎯 Tầm quan trọng / Hệ số của đặc trưng")
+            st.subheader("🎯 Trọng số đặc trưng")
             if hasattr(best_model, "feature_importances_"):
                 values = best_model.feature_importances_
                 label_title = f"Feature Importance ({best_model_name})"
@@ -450,17 +547,30 @@ try:
                 st.plotly_chart(fig_importance, use_container_width=True)
 
         with col_g2:
-            st.subheader("📉 Phân phối Phần dư Sai số (Residuals)")
+            st.subheader("📉 Phân phối Phần dư")
             residuals = y_test - test_preds
             fig_res = px.histogram(
                 x=residuals, nbins=30,
                 labels={'x': 'Sai số (xG Thực tế - xG Dự báo)'},
-                title=f"Phân phối phần dư của {best_model_name}",
+                title=f"Phân phối phần dư ({best_model_name})",
                 color_discrete_sequence=["#00ffcc"]
             )
             fig_res.add_vline(x=0, line_dash="dash", line_color="#ef4444")
             fig_res.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig_res, use_container_width=True)
+
+        with col_g3:
+            st.subheader("📐 Thực tế vs Dự báo")
+            fig_scat = px.scatter(
+                x=y_test, y=test_preds, opacity=0.75,
+                labels={'x': 'xG Thực tế (Actual)', 'y': 'xG Dự báo (Predicted)'},
+                title=f"Actual vs Predicted ({best_model_name})",
+                color_discrete_sequence=["#00ffcc"]
+            )
+            max_v = max(float(y_test.max()), float(test_preds.max()))
+            fig_scat.add_trace(go.Scatter(x=[0, max_v], y=[0, max_v], mode="lines", line=dict(color="#fbbf24", dash="dash"), name="Đường chuẩn y=x"))
+            fig_scat.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            st.plotly_chart(fig_scat, use_container_width=True)
 
 except Exception as e:
     st.error(f"Ứng dụng gặp sự cố kỹ thuật trong quá trình xử lý: {e}")
