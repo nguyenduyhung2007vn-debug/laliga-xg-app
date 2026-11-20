@@ -28,7 +28,6 @@ st.markdown("""
 .stApp {
     background-color: #060913 !important;
 }
-/* Chỉ áp dụng màu sáng cho văn bản, không ghi đè font của icon hệ thống */
 .stApp p, .stApp label, .stApp li, .stApp small {
     color: #f8fafc !important;
 }
@@ -37,7 +36,7 @@ st.markdown("""
     border-right: 1px solid #1e293b !important;
 }
 
-/* Sửa triệt để st.expander (Trang 1: Hiểu xG trong 30 giây) */
+/* Sửa triệt để st.expander */
 [data-testid="stExpander"] {
     background-color: #0f172a !important;
     border: 1px solid #334155 !important;
@@ -63,7 +62,7 @@ st.markdown("""
     border-top: 1px solid #1e293b !important;
 }
 
-/* Sửa triệt để nền trắng của st.success & st.info */
+/* Sửa triệt để st.success & st.info */
 [data-testid="stAlert"], div[role="alert"] {
     background-color: #0f172a !important;
     border: 1px solid #00ffcc !important;
@@ -76,7 +75,7 @@ st.markdown("""
     color: #00ffcc !important;
 }
 
-/* Sửa triệt để nền trắng của nút Tải xuống & mọi nút bấm */
+/* Sửa triệt để nút Tải xuống & nút bấm */
 [data-testid="stDownloadButton"] button, .stButton button {
     background-color: #0f172a !important;
     color: #00ffcc !important;
@@ -128,6 +127,34 @@ h1, h2, h3, h1 *, h2 *, h3 * {
 }
 </style>
 """, unsafe_allow_html=True)
+
+def apply_dark_theme(fig, title=None):
+    """Ép cứng toàn bộ chữ trục, chú thích và colorbar sang màu trắng sáng"""
+    if title:
+        fig.update_layout(title=dict(text=title, font=dict(color="#00ffcc", size=15)))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#f8fafc", size=12),
+        legend=dict(font=dict(color="#f8fafc"), title=dict(font=dict(color="#f8fafc"))),
+        coloraxis_colorbar=dict(tickfont=dict(color="#f8fafc"), title=dict(font=dict(color="#f8fafc")))
+    )
+    fig.update_xaxes(
+        color="#f8fafc",
+        tickfont=dict(color="#f8fafc"),
+        title_font=dict(color="#f8fafc"),
+        gridcolor="#1e293b",
+        zerolinecolor="#334155"
+    )
+    fig.update_yaxes(
+        color="#f8fafc",
+        tickfont=dict(color="#f8fafc"),
+        title_font=dict(color="#f8fafc"),
+        gridcolor="#1e293b",
+        zerolinecolor="#334155"
+    )
+    return fig
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
@@ -354,17 +381,16 @@ try:
             fig = px.histogram(
                 df, x="xg", color="venue", barmode="overlay", marginal="box",
                 color_discrete_map={"Home": "#00ffcc", "Away": "#3b82f6"},
-                labels={"xg": "Bàn thắng kỳ vọng (xG)", "venue": "Địa điểm"}
+                labels={"xg": "Bàn thắng kỳ vọng (xG)", "venue": "Địa điểm", "count": "Số trận"}
             )
-            fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(apply_dark_theme(fig), use_container_width=True)
 
         with col_g2:
             st.subheader("📈 Ma trận tương quan chỉ số chuyên môn")
             corr_matrix = df[["gf", "ga", "xg", "xga", "sh", "sot"]].corr()
             fig_corr = px.imshow(corr_matrix, text_auto=".2f", color_continuous_scale="Tealgrn")
-            fig_corr.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-            st.plotly_chart(fig_corr, use_container_width=True)
+            st.plotly_chart(apply_dark_theme(fig_corr), use_container_width=True)
+
 # Khối 5: Trang 2 (Match Prediction & Ma trận tỷ số Poisson)
     # ------------------ TRANG 2: MATCH PREDICTION ------------------
     elif page == "🏟️ Match Prediction (Học máy)":
@@ -483,13 +509,8 @@ try:
                 text=[f"{away_win * 100:.1f}%", f"{draw * 100:.1f}%", f"{home_win * 100:.1f}%"],
                 textposition="inside"
             ))
-            fig_prob.update_layout(
-                xaxis_title="Xác suất (%)",
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
-            st.plotly_chart(fig_prob, use_container_width=True)
+            fig_prob.update_layout(xaxis_title="Xác suất (%)")
+            st.plotly_chart(apply_dark_theme(fig_prob), use_container_width=True)
 
             st.markdown("**🔥 Top 3 tỷ số có xác suất cao nhất:**")
             for idx_s, (sc_label, sc_prob) in enumerate(top3_scores, 1):
@@ -503,12 +524,7 @@ try:
                 columns=[f"{away_team} {j}" for j in range(5)]
             )
             fig_heat = px.imshow(score_df, text_auto=True, color_continuous_scale="Blues")
-            fig_heat.update_layout(
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
-            st.plotly_chart(fig_heat, use_container_width=True)
+            st.plotly_chart(apply_dark_theme(fig_heat), use_container_width=True)
 # Khối 6: Trang 3 (Phân tích phong độ), Trang 4 (Đánh giá mô hình) & Xử lý ngoại lệ
     # ------------------ TRANG 3: TEAM ANALYTICS ------------------
     elif page == "📊 Phân tích xG & Phong độ":
@@ -532,13 +548,7 @@ try:
             color_discrete_map={"xg": "#00ffcc", "xga": "#ef4444"},
             labels={"value": "Chỉ số trung bình", "season": "Mùa giải", "variable": "Chỉ số"}
         )
-        fig_trend.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#f8fafc")
-        )
-        st.plotly_chart(fig_trend, use_container_width=True)
+        st.plotly_chart(apply_dark_theme(fig_trend), use_container_width=True)
 
         st.subheader(f"📋 Lịch sử 15 trận gần nhất của {selected_team}")
         display_df = team_df[["date", "opponent", "venue", "result", "gf", "ga", "xg", "xga", "sh", "sot"]].head(15).copy()
@@ -573,16 +583,6 @@ try:
         st.markdown("---")
         col_g1, col_g2, col_g3 = st.columns(3)
 
-        chart_font_style = dict(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#f8fafc", size=12),
-            title_font=dict(color="#00ffcc", size=15),
-            xaxis=dict(color="#f8fafc", gridcolor="#1e293b", title_font=dict(color="#f8fafc")),
-            yaxis=dict(color="#f8fafc", gridcolor="#1e293b", title_font=dict(color="#f8fafc"))
-        )
-
         with col_g1:
             st.subheader("🎯 Trọng số đặc trưng")
             if hasattr(best_model, "feature_importances_"):
@@ -602,34 +602,29 @@ try:
                     orientation='h',
                     marker_color="#00f0ff"
                 ))
-                fig_importance.update_layout(title=label_title, **chart_font_style)
-                st.plotly_chart(fig_importance, use_container_width=True)
+                st.plotly_chart(apply_dark_theme(fig_importance, label_title), use_container_width=True)
 
         with col_g2:
             st.subheader("📉 Phân phối Phần dư")
             residuals = y_test - test_preds
             fig_res = px.histogram(
                 x=residuals, nbins=30,
-                labels={'x': 'Sai số (xG Thực tế - xG Dự báo)'},
-                title=f"Phân phối phần dư ({best_model_name})",
+                labels={'x': 'Sai số (xG Thực tế - xG Dự báo)', 'count': 'Số trận'},
                 color_discrete_sequence=["#00ffcc"]
             )
             fig_res.add_vline(x=0, line_dash="dash", line_color="#ef4444")
-            fig_res.update_layout(**chart_font_style)
-            st.plotly_chart(fig_res, use_container_width=True)
+            st.plotly_chart(apply_dark_theme(fig_res, f"Phân phối phần dư ({best_model_name})"), use_container_width=True)
 
         with col_g3:
             st.subheader("📐 Thực tế vs Dự báo")
             fig_scat = px.scatter(
                 x=y_test, y=test_preds, opacity=0.75,
                 labels={'x': 'xG Thực tế (Actual)', 'y': 'xG Dự báo (Predicted)'},
-                title=f"Actual vs Predicted ({best_model_name})",
                 color_discrete_sequence=["#00ffcc"]
             )
             max_v = max(float(y_test.max()), float(test_preds.max()))
             fig_scat.add_trace(go.Scatter(x=[0, max_v], y=[0, max_v], mode="lines", line=dict(color="#fbbf24", dash="dash"), name="Đường chuẩn y=x"))
-            fig_scat.update_layout(**chart_font_style, legend=dict(font=dict(color="#f8fafc")))
-            st.plotly_chart(fig_scat, use_container_width=True)
+            st.plotly_chart(apply_dark_theme(fig_scat, f"Actual vs Predicted ({best_model_name})"), use_container_width=True)
 
 except Exception as e:
     st.error(f"Ứng dụng gặp sự cố kỹ thuật trong quá trình xử lý: {e}")
