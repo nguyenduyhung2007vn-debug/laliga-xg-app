@@ -36,14 +36,39 @@ st.markdown("""
     background-color: #0b0f19 !important;
     border-right: 1px solid #1e293b !important;
 }
-[data-testid="stAlert"] {
-    background-color: #064e3b !important;
+
+/* Sửa triệt để nền trắng của st.success & st.info (Sidebar + Trang 1) */
+[data-testid="stAlert"], div[role="alert"] {
+    background-color: #0f172a !important;
     border: 1px solid #00ffcc !important;
     border-radius: 8px !important;
 }
-[data-testid="stAlert"] * {
+[data-testid="stAlert"] > div, div[role="alert"] > div {
+    background-color: transparent !important;
+}
+[data-testid="stAlert"] *, div[role="alert"] * {
     color: #00ffcc !important;
 }
+
+/* Sửa triệt để nền trắng của nút Tải xuống & mọi nút bấm (Trang 4) */
+[data-testid="stDownloadButton"] button, .stButton button {
+    background-color: #0f172a !important;
+    color: #00ffcc !important;
+    border: 1px solid #00ffcc !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    transition: all 0.2s ease !important;
+}
+[data-testid="stDownloadButton"] button:hover, .stButton button:hover {
+    background-color: #00ffcc !important;
+    color: #060913 !important;
+    border: 1px solid #00ffcc !important;
+}
+[data-testid="stDownloadButton"] button:hover *, .stButton button:hover * {
+    color: #060913 !important;
+}
+
+/* Thẻ KPI Metric */
 [data-testid="stMetric"], .stMetric {
     background: linear-gradient(145deg, #0f172a, #1e293b) !important;
     border: 1px solid #334155 !important;
@@ -84,6 +109,7 @@ h1, h2, h3, h1 *, h2 *, h3 * {
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
+
 # Khối 2: Tiền xử lý dữ liệu & Trích xuất đặc trưng (Feature Engineering)
 @st.cache_data
 def load_and_process_data(file_path):
@@ -483,7 +509,12 @@ try:
             color_discrete_map={"xg": "#00ffcc", "xga": "#ef4444"},
             labels={"value": "Chỉ số trung bình", "season": "Mùa giải", "variable": "Chỉ số"}
         )
-        fig_trend.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_trend.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#f8fafc")
+        )
         st.plotly_chart(fig_trend, use_container_width=True)
 
         st.subheader(f"📋 Lịch sử 15 trận gần nhất của {selected_team}")
@@ -519,6 +550,16 @@ try:
         st.markdown("---")
         col_g1, col_g2, col_g3 = st.columns(3)
 
+        chart_font_style = dict(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#f8fafc", size=12),
+            title_font=dict(color="#00ffcc", size=15),
+            xaxis=dict(color="#f8fafc", gridcolor="#1e293b", title_font=dict(color="#f8fafc")),
+            yaxis=dict(color="#f8fafc", gridcolor="#1e293b", title_font=dict(color="#f8fafc"))
+        )
+
         with col_g1:
             st.subheader("🎯 Trọng số đặc trưng")
             if hasattr(best_model, "feature_importances_"):
@@ -538,12 +579,7 @@ try:
                     orientation='h',
                     marker_color="#00f0ff"
                 ))
-                fig_importance.update_layout(
-                    title=label_title,
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)"
-                )
+                fig_importance.update_layout(title=label_title, **chart_font_style)
                 st.plotly_chart(fig_importance, use_container_width=True)
 
         with col_g2:
@@ -556,7 +592,7 @@ try:
                 color_discrete_sequence=["#00ffcc"]
             )
             fig_res.add_vline(x=0, line_dash="dash", line_color="#ef4444")
-            fig_res.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_res.update_layout(**chart_font_style)
             st.plotly_chart(fig_res, use_container_width=True)
 
         with col_g3:
@@ -569,7 +605,7 @@ try:
             )
             max_v = max(float(y_test.max()), float(test_preds.max()))
             fig_scat.add_trace(go.Scatter(x=[0, max_v], y=[0, max_v], mode="lines", line=dict(color="#fbbf24", dash="dash"), name="Đường chuẩn y=x"))
-            fig_scat.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig_scat.update_layout(**chart_font_style, legend=dict(font=dict(color="#f8fafc")))
             st.plotly_chart(fig_scat, use_container_width=True)
 
 except Exception as e:
