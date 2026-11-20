@@ -28,16 +28,42 @@ st.markdown("""
 .stApp {
     background-color: #060913 !important;
 }
-.stApp p, .stApp span, .stApp label, .stApp li, .stApp div, .stApp small {
+/* Chỉ áp dụng màu sáng cho văn bản, không ghi đè font của icon hệ thống */
+.stApp p, .stApp label, .stApp li, .stApp small {
     color: #f8fafc !important;
-    font-family: 'Inter', sans-serif !important;
 }
 [data-testid="stSidebar"] {
     background-color: #0b0f19 !important;
     border-right: 1px solid #1e293b !important;
 }
 
-/* Sửa triệt để nền trắng của st.success & st.info (Sidebar + Trang 1) */
+/* Sửa triệt để st.expander (Trang 1: Hiểu xG trong 30 giây) */
+[data-testid="stExpander"] {
+    background-color: #0f172a !important;
+    border: 1px solid #334155 !important;
+    border-radius: 10px !important;
+}
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] summary:hover,
+[data-testid="stExpander"] summary:focus {
+    background-color: #0f172a !important;
+    color: #00ffcc !important;
+    border-radius: 10px !important;
+}
+[data-testid="stExpander"] summary p {
+    color: #00ffcc !important;
+    font-weight: 700 !important;
+}
+[data-testid="stExpander"] summary svg {
+    fill: #00ffcc !important;
+    color: #00ffcc !important;
+}
+[data-testid="stExpanderDetails"] {
+    background-color: #0b1120 !important;
+    border-top: 1px solid #1e293b !important;
+}
+
+/* Sửa triệt để nền trắng của st.success & st.info */
 [data-testid="stAlert"], div[role="alert"] {
     background-color: #0f172a !important;
     border: 1px solid #00ffcc !important;
@@ -46,25 +72,23 @@ st.markdown("""
 [data-testid="stAlert"] > div, div[role="alert"] > div {
     background-color: transparent !important;
 }
-[data-testid="stAlert"] *, div[role="alert"] * {
+[data-testid="stAlert"] p, div[role="alert"] p {
     color: #00ffcc !important;
 }
 
-/* Sửa triệt để nền trắng của nút Tải xuống & mọi nút bấm (Trang 4) */
+/* Sửa triệt để nền trắng của nút Tải xuống & mọi nút bấm */
 [data-testid="stDownloadButton"] button, .stButton button {
     background-color: #0f172a !important;
     color: #00ffcc !important;
     border: 1px solid #00ffcc !important;
     border-radius: 8px !important;
     font-weight: 700 !important;
-    transition: all 0.2s ease !important;
 }
 [data-testid="stDownloadButton"] button:hover, .stButton button:hover {
     background-color: #00ffcc !important;
     color: #060913 !important;
-    border: 1px solid #00ffcc !important;
 }
-[data-testid="stDownloadButton"] button:hover *, .stButton button:hover * {
+[data-testid="stDownloadButton"] button:hover p, .stButton button:hover p {
     color: #060913 !important;
 }
 
@@ -80,12 +104,10 @@ st.markdown("""
     color: #00ffcc !important;
     font-size: 2rem !important;
     font-weight: 800 !important;
-    text-shadow: 0px 0px 10px rgba(0, 255, 204, 0.35) !important;
 }
 h1, h2, h3, h1 *, h2 *, h3 * {
     color: #00f0ff !important;
     font-weight: 800 !important;
-    text-shadow: 0px 0px 8px rgba(0, 240, 255, 0.4) !important;
 }
 .stSelectbox div[data-baseweb="select"] {
     background-color: #1e293b !important;
@@ -94,7 +116,6 @@ h1, h2, h3, h1 *, h2 *, h3 * {
 }
 .stSelectbox div[data-baseweb="select"] * {
     color: #ffffff !important;
-    font-weight: 600 !important;
 }
 .explain-box {
     background: linear-gradient(145deg, #0f172a, #162238);
@@ -102,6 +123,7 @@ h1, h2, h3, h1 *, h2 *, h3 * {
     padding: 14px 18px;
     border-radius: 8px;
     margin: 12px 0;
+    color: #f8fafc !important;
     line-height: 1.6;
 }
 </style>
@@ -109,6 +131,7 @@ h1, h2, h3, h1 *, h2 *, h3 * {
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "matches_laliga_clean.csv"
+
 
 # Khối 2: Tiền xử lý dữ liệu & Trích xuất đặc trưng (Feature Engineering)
 @st.cache_data
